@@ -1,50 +1,28 @@
 import streamlit as st
 from game_logic import check_winner, is_full, get_best_move
 
-# Page config
-st.set_page_config(page_title="Tic-Tac-Toe AI", layout="wide")
+st.set_page_config(page_title="Tic-Tac-Toe AI", layout="centered")
+st.title("🤖 Tic-Tac-Toe with AI (Minimax) --------------   (Double tap on a cell )")
 
-# Custom styling for mobile responsiveness
-st.markdown("""
-    <style>
-    .block-container {
-        padding-top: 1rem;
-        padding-bottom: 2rem;
-    }
-    .game-wrapper {
-        max-width: 400px;
-        margin: auto;
-    }
-    button[kind="secondary"] {
-        height: 70px !important;
-        font-size: 24px !important;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-st.title("🤖 Tic-Tac-Toe with AI (Minimax)")
-
-# Initialize game state
+# Initialize session state
 if "board" not in st.session_state:
     st.session_state.board = [["" for _ in range(3)] for _ in range(3)]
 if "game_over" not in st.session_state:
     st.session_state.game_over = False
 if "turn" not in st.session_state:
-    st.session_state.turn = "X"
-if "game_started" not in st.session_state:
-    st.session_state.game_started = False
+    st.session_state.turn = "X"  # Human starts
 
-# --- Game logic ---
+# Function to handle player move
 def player_move(i, j):
     if st.session_state.board[i][j] == "" and not st.session_state.game_over and st.session_state.turn == "X":
         st.session_state.board[i][j] = "X"
         winner = check_winner(st.session_state.board)
         if winner or is_full(st.session_state.board):
             st.session_state.game_over = True
-        else:
-            st.session_state.turn = "O"
-            ai_move()
+            return
+        st.session_state.turn = "O"
 
+# Function to handle AI move
 def ai_move():
     move = get_best_move(st.session_state.board)
     if move:
@@ -52,41 +30,37 @@ def ai_move():
     winner = check_winner(st.session_state.board)
     if winner or is_full(st.session_state.board):
         st.session_state.game_over = True
-    else:
-        st.session_state.turn = "X"
-
-def reset_game():
-    st.session_state.board = [["" for _ in range(3)] for _ in range(3)]
     st.session_state.turn = "X"
+
+# Track which cell is clicked
+clicked_cell = None
+
+# Display the game grid
+for i in range(3):
+    cols = st.columns(3)
+    for j in range(3):
+        button_label = st.session_state.board[i][j] or " "
+        if cols[j].button(button_label, key=f"{i}-{j}"):
+            clicked_cell = (i, j)
+
+# Handle player move
+if clicked_cell:
+    i, j = clicked_cell
+    player_move(i, j)
+
+# Handle AI move
+if st.session_state.turn == "O" and not st.session_state.game_over:
+    ai_move()
+
+# Display game result
+winner = check_winner(st.session_state.board)
+if winner:
+    st.success(f"🎉 Winner: {winner}")
+elif is_full(st.session_state.board):
+    st.info("It's a draw!")
+
+# Reset game
+if st.button("🔄 Reset Game"):
+    st.session_state.board = [["" for _ in range(3)] for _ in range(3)]
     st.session_state.game_over = False
-    st.session_state.game_started = False
-
-# --- Game UI ---
-if not st.session_state.game_started:
-    if st.button("🎮 Start Game", use_container_width=True):
-        st.session_state.game_started = True
-        reset_game()
-else:
-    st.markdown("<div class='game-wrapper'>", unsafe_allow_html=True)
-
-    for i in range(3):
-        cols = st.columns([1, 1, 1])
-        for j in range(3):
-            label = st.session_state.board[i][j] or " "
-            cols[j].button(
-                label,
-                key=f"{i}-{j}",
-                on_click=player_move,
-                args=(i, j),
-                use_container_width=True,
-            )
-
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    winner = check_winner(st.session_state.board)
-    if winner:
-        st.success(f"🎉 Winner: {winner}")
-    elif is_full(st.session_state.board):
-        st.info("It's a draw!")
-
-    st.button("🔄 Reset Game", on_click=reset_game, use_container_width=True)
+    st.session_state.turn = "X"
